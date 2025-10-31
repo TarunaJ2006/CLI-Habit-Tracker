@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+"""
+Command-Line Habit Tracker
+--------------------------
+Track your daily habits from the terminal.
+
+Usage:
+    python habit_tracker.py add "Read 10 pages"
+    python habit_tracker.py done "Read 10 pages"
+    python habit_tracker.py list
+    python habit_tracker.py stats
+"""
+
+import json
+import sys
+from datetime import datetime
+
+DATA_FILE = "habits.json"
+
+
+def load_data():
+    try:
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"habits": []}
+
+
+def save_data(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+
+def add_habit(name):
+    data = load_data()
+    for h in data["habits"]:
+        if h["name"].lower() == name.lower():
+            print(f"Habit '{name}' already exists.")
+            return
+    data["habits"].append({"name": name, "streak": 0, "last_done": None})
+    save_data(data)
+    print(f"Added new habit: {name}")
+
+
+def mark_done(name):
+    data = load_data()
+    for h in data["habits"]:
+        if h["name"].lower() == name.lower():
+            today = datetime.now().strftime("%Y-%m-%d")
+            if h["last_done"] == today:
+                print(f"Already marked '{name}' as done today.")
+                return
+            h["streak"] += 1
+            h["last_done"] = today
+            save_data(data)
+            print(f"Marked '{name}' as done! (Streak: {h['streak']})")
+            return
+    print(f"Habit '{name}' not found.")
+
+
+def list_habits():
+    data = load_data()
+    if not data["habits"]:
+        print("No habits found. Use 'add' to create one.")
+        return
+    print("\nYour Habits:")
+    for h in data["habits"]:
+        done_today = "Done" if h["last_done"] == datetime.now().strftime("%Y-%m-%d") else "Not done"
+        print(f"- {h['name']} | Streak: {h['streak']} | Today: {done_today}")
+    print()
+
+
+def show_stats():
+    data = load_data()
+    total = len(data["habits"])
+    if total == 0:
+        print("No habits tracked yet.")
+        return
+    done_today = sum(1 for h in data["habits"] if h["last_done"] == datetime.now().strftime("%Y-%m-%d"))
+    print(f"{done_today}/{total} habits done today.")
+    longest = max(data["habits"], key=lambda x: x["streak"], default=None)
+    if longest:
+        print(f"Longest streak: {longest['name']} ({longest['streak']} days)")
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(_doc_)
+        return
+
+    command = sys.argv[1].lower()
+    if command == "add" and len(sys.argv) > 2:
+        add_habit(" ".join(sys.argv[2:]))
+    elif command == "done" and len(sys.argv) > 2:
+        mark_done(" ".join(sys.argv[2:]))
+    elif command == "list":
+        list_habits()
+    elif command == "stats":
+        show_stats()
+    else:
+        print(_doc_)
+
+
+if _name_ == "_main_":
+    main()
